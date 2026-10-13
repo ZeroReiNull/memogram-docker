@@ -1,0 +1,96 @@
+
+name: Build Memogram
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force rebuild"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: memogram-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
+
+      - name: Checkout upstream Memogram
+        uses: actions/checkout@v4
+        with:
+          repository: usememos/telegram-integration
+          ref: main
+          path: upstream
+          persist-credentials: false
+
+      - name: Check upstream revision
+        id: check
+        env:
+          OWNER: ${{ github.repository_owner }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          SHA=$(git -C upstream rev-parse HEAD)
+          IMAGE="ghcr.io/${OWNER,,}/memogram"
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+          if [ "$FORCE" = "true" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          elif docker manifest inspect "$IMAGE:sha-$SHA" \
+            >/dev/null 2>&1; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "Upstream unchanged; skipping."
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        if: steps.check.outputs.build == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.check.outputs.build == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.check.outputs.build == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        if: steps.check.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./upstream
+          file: ./upstream/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ steps.check.outputs.image }}:latest
+            ${{ steps.check.outputs.image }}:sha-${{ steps.check.outputs.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.check.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "Upstream SHA: ${{ steps.check.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build required: ${{ steps.check.outputs.build }}" >> "$GITHUB_STEP_SUMMARY"
