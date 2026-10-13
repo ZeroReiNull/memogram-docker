@@ -1,6 +1,6 @@
 # Memogram Docker
 
-[![Build Memogram](https://github.com/ZeroReiNull/memogram-docker/actions/workflows/docker.yml/badge.svg)](https://github.com/ZeroReiNull/memogram-docker/actions)
+[![Build Memogram](https://github.com/ZeroReiNull/memogram-docker/actions/workflows/docker.yaml/badge.svg)](https://github.com/ZeroReiNull/memogram-docker/actions/workflows/docker.yaml)
 
 Automated, multi-platform Docker builds of [Memogram](https://github.com/usememos/telegram-integration), the Telegram bot integration for [Memos](https://github.com/usememos/memos).
 
@@ -63,10 +63,7 @@ services:
 Start the services:
 
 ```bash
-docker compose config
-docker compose pull
 docker compose up -d
-docker compose logs -f memos memogram
 ```
 
 To use the bot:
