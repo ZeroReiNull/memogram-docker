@@ -44,6 +44,8 @@ jobs:
           SHA=$(git -C upstream rev-parse HEAD)
           IMAGE="ghcr.io/${OWNER,,}/memogram"
 
+          VERSION=$(bash upstream/scripts/release_version.sh development-version upstream)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
@@ -82,7 +84,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           build-args: |
-            VERSION=dev
+            VERSION=${{ steps.check.outputs.version }}
             COMMIT=${{ steps.check.outputs.sha }}
           tags: |
             ${{ steps.check.outputs.image }}:latest
