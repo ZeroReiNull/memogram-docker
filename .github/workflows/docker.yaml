@@ -81,6 +81,9 @@ jobs:
           file: ./upstream/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=dev
+            COMMIT=${{ steps.check.outputs.sha }}
           tags: |
             ${{ steps.check.outputs.image }}:latest
             ${{ steps.check.outputs.image }}:sha-${{ steps.check.outputs.sha }}
